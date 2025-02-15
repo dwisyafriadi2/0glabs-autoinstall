@@ -58,8 +58,9 @@ install_node() {
     echo 'ZGS_NODE__BLOCKCHAIN_RPC_ENDPOINT=https://evmrpc-testnet.0g.ai' >> $HOME/0g-storage-node/run/.env
     sed -i "s|miner_key = \"\"|miner_key = \"$miner_key\"|" config.toml
     
-    echo "alias zgslog='tail -f $HOME/0g-storage-node/run/log/zgs.log.$(date +%F)'" >> ~/.bashrc
+    echo "alias zgs-logs='tail -f \$HOME/0g-storage-node/run/log/zgs.log.\$(date +%F)'" >> ~/.bashrc
     echo "alias zgs='$HOME/0g-storage-node/run/zgs.sh'" >> ~/.bashrc
+    echo 'export PATH=$HOME/0g-storage-node/run:$PATH' >> ~/.bashrc
     source ~/.bashrc
     hash -r
 }
