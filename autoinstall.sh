@@ -108,6 +108,7 @@ uninstall_node() {
 }
 
 check_status() {
+    echo "Checking Status 0G Storage Node..."
     bash $HOME/0g-storage-node/run/zgs.sh info
 }
 
