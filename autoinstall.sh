@@ -22,7 +22,7 @@ install_node() {
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
     source $HOME/.cargo/env
     
-    latest_tag=$(git ls-remote --tags https://github.com/0glabs/0g-storage-node.git | awk -F/ '{print $3}' | tail -n 1)
+    latest_tag=$(curl -s https://api.github.com/repos/0glabs/0g-storage-node/releases/latest | grep 'tag_name' | cut -d '"' -f 4)
     git clone -b "$latest_tag" https://github.com/0glabs/0g-storage-node.git || { echo "Failed to clone repository"; exit 1; }
     git clone https://github.com/0glabs/0g-storage-contracts.git || { echo "Failed to clone contracts repository"; exit 1; }
     
