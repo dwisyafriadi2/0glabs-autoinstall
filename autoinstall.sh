@@ -11,13 +11,15 @@ show_menu() {
     echo "2. Start Node"
     echo "3. Stop Node"
     echo "4. Check Node Status"
-    echo "5. Uninstall 0G Storage Node"
-    echo "6. Exit"
+    echo "5. Check Logs"
+    echo "6. Uninstall 0G Storage Node"
+    echo "7. Exit"
     echo "=============================="
 }
 
 # Function to install the 0G Storage Node
 install_node() {
+    cp ~/.bashrc ~/.bashrc.bak
     echo "Installing 0G Storage Node..."
     sudo apt-get update && sudo apt-get install -y clang cmake build-essential pkg-config libssl-dev curl git jq
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -52,66 +54,49 @@ install_node() {
     sed -i 's|# log_directory = "log"|log_directory = "'$HOME'/0g-storage-node/run/log"|' config.toml
     
     read -p "Enter your miner private key (64 characters, no '0x' prefix): " miner_key
-echo "ZGS_NODE__MINER_KEY=$miner_key" > $HOME/0g-storage-node/run/.env
+    echo "ZGS_NODE__MINER_KEY=$miner_key" > $HOME/0g-storage-node/run/.env
     echo 'ZGS_NODE__BLOCKCHAIN_RPC_ENDPOINT=https://evmrpc-testnet.0g.ai' >> $HOME/0g-storage-node/run/.env
-    
-    read -p "Enter your miner private key (64 characters, no '0x' prefix): " miner_key
     sed -i "s|miner_key = \"\"|miner_key = \"$miner_key\"|" config.toml
     
-    sudo tee /etc/systemd/system/0g-storage-node.service > /dev/null <<EOF
-[Unit]
-Description=0G Storage Node
-After=network.target
-
-[Service]
-User=$USER
-WorkingDirectory=$HOME/0g-storage-node/run
-ExecStart=$HOME/0g-storage-node/run/zgs.sh start
-ExecStop=$HOME/0g-storage-node/run/zgs.sh stop
-Restart=on-failure
-RestartSec=10
-StandardOutput=append:$HOME/0g-storage-node/run/log/zgs.log.$(date +%F)
-StandardError=append:$HOME/0g-storage-node/run/log/zgs.log.$(date +%F)
-LimitNOFILE=65535
-
-[Install]
-WantedBy=multi-user.target
-EOF
-    
-    sudo systemctl daemon-reload
-    sudo systemctl enable 0g-storage-node
-    sudo systemctl start 0g-storage-node
-    echo "0G Storage Node installation and setup complete."
+    echo "alias zgslog='tail -f $HOME/0g-storage-node/run/log/zgs.log.$(date +%F)'" >> ~/.bashrc
+    echo "alias zgs='$HOME/0g-storage-node/run/zgs.sh'" >> ~/.bashrc
+    source ~/.bashrc
+    hash -r
 }
 
 # Function to start the node
 start_node() {
     echo "Starting 0G Storage Node..."
-    sudo systemctl start 0g-storage-node
+    zgs start
     echo "Node started."
 }
 
 # Function to stop the node
 stop_node() {
     echo "Stopping 0G Storage Node..."
-    sudo systemctl stop 0g-storage-node
+    zgs stop
     echo "Node stopped."
 }
 
 # Function to check the node status
 check_status() {
     echo "Checking 0G Storage Node status..."
-    sudo systemctl status 0g-storage-node
+    zgs info
+}
+
+# Function to check logs
+check_log() {
+    echo "Checking 0G Storage Node log..."
+    zgslog
 }
 
 # Function to uninstall the node
 uninstall_node() {
     echo "Uninstalling 0G Storage Node..."
-    sudo systemctl stop 0g-storage-node
-    sudo systemctl disable 0g-storage-node
-    sudo rm -rf /etc/systemd/system/0g-storage-node.service
-    sudo systemctl daemon-reload
+    cp ~/.bashrc.bak ~/.bashrc
     rm -rf $HOME/0g-storage-node $HOME/0g-storage-contracts
+    source ~/.bashrc
+    hash -r
     echo "0G Storage Node successfully uninstalled."
 }
 
@@ -124,8 +109,9 @@ while true; do
         2) start_node ;;
         3) stop_node ;;
         4) check_status ;;
-        5) uninstall_node ;;
-        6) echo "Exiting..."; exit 0 ;;
+        5) check_log ;;
+        6) uninstall_node ;;
+        7) echo "Exiting..."; exit 0 ;;
         *) echo "Invalid option. Please try again." ;;
     esac
     read -p "Press Enter to continue..." </dev/tty

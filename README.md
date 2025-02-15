@@ -9,9 +9,11 @@
 2. ```cd og-ai-storagenode; chmod +x autoinstall.sh```
 3. ```./autoinstall.sh```
 
+## Buy Faucet on here
+
 
 ## Join on telegram channel
-[Join Telegram Channel](http://t.me/dasarpemulung)
+[Join Telegram Channel](https://t.me/dasarpemulung)
 
 ## Tutorial Video
 [YouTube](https://www.youtube.com/@dasarpemulung)
