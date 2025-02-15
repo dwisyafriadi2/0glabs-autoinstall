@@ -11,7 +11,8 @@ show_menu() {
     echo "2. Start Node"
     echo "3. Stop Node"
     echo "4. Check Node Status"
-    echo "5. Exit"
+    echo "5. Uninstall 0G Storage Node"
+    echo "6. Exit"
     echo "=============================="
 }
 
@@ -98,6 +99,17 @@ check_status() {
     sudo systemctl status 0g-storage-node
 }
 
+# Function to uninstall the node
+uninstall_node() {
+    echo "Uninstalling 0G Storage Node..."
+    sudo systemctl stop 0g-storage-node
+    sudo systemctl disable 0g-storage-node
+    sudo rm -rf /etc/systemd/system/0g-storage-node.service
+    sudo systemctl daemon-reload
+    rm -rf $HOME/0g-storage-node $HOME/0g-storage-contracts
+    echo "0G Storage Node successfully uninstalled."
+}
+
 # Main menu loop
 while true; do
     show_menu
@@ -107,7 +119,8 @@ while true; do
         2) start_node ;;
         3) stop_node ;;
         4) check_status ;;
-        5) echo "Exiting..."; exit 0 ;;
+        5) uninstall_node ;;
+        6) echo "Exiting..."; exit 0 ;;
         *) echo "Invalid option. Please try again." ;;
     esac
     read -p "Press Enter to continue..." </dev/tty
