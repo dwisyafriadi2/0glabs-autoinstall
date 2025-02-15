@@ -19,6 +19,7 @@ show_menu() {
 
 # Function to install the 0G Storage Node
 install_node() {
+    set -e  # Stop script on first error
     cp ~/.bashrc ~/.bashrc.bak
     echo "Installing 0G Storage Node..."
     sudo apt-get update && sudo apt-get install -y clang cmake build-essential pkg-config libssl-dev curl git jq
@@ -47,48 +48,53 @@ install_node() {
     
     cp config-testnet-turbo.toml config.toml
     sed -i 's|blockchain_rpc_endpoint = ""|blockchain_rpc_endpoint = "https://evmrpc-testnet.0g.ai"|' config.toml
-    sed -i 's|log_contract_address = ""|log_contract_address = "0xbD2C3F0E65eDF5582141C35969d66e34629cC768"|' config.toml
-    sed -i 's|mine_contract_address = ""|mine_contract_address = "0x6815F41019255e00D6F34aAB8397a6Af5b6D806f"|' config.toml
     sed -i 's|log_sync_start_block_number = 0|log_sync_start_block_number = 940000|' config.toml
-    sed -i 's|# log_config_file = "log_config"|log_config_file = "'$HOME'/0g-storage-node/run/log_config"|' config.toml
-    sed -i 's|# log_directory = "log"|log_directory = "'$HOME'/0g-storage-node/run/log"|' config.toml
     
+    # Read user input
     read -p "Enter your miner private key (64 characters, no '0x' prefix): " miner_key
-    echo "ZGS_NODE__MINER_KEY=$miner_key" > $HOME/0g-storage-node/run/.env
-    echo 'ZGS_NODE__BLOCKCHAIN_RPC_ENDPOINT=https://evmrpc-testnet.0g.ai' >> $HOME/0g-storage-node/run/.env
+    read -p "Enter blockchain RPC endpoint (default: https://evmrpc-testnet.0g.ai): " blockchain_rpc_endpoint
+    blockchain_rpc_endpoint=${blockchain_rpc_endpoint:-https://evmrpc-testnet.0g.ai}
+
+    # Create .env file
+    cat <<EOF > $HOME/0g-storage-node/run/.env
+ZGS_NODE__MINER_KEY=$miner_key
+ZGS_NODE__BLOCKCHAIN_RPC_ENDPOINT=$blockchain_rpc_endpoint
+EOF
+
+    # Update config.toml
     sed -i "s|miner_key = \"\"|miner_key = \"$miner_key\"|" config.toml
-    
+
+    # Add aliases
     echo "alias zgs-logs='tail -f \$HOME/0g-storage-node/run/log/zgs.log.\$(date +%F)'" >> ~/.bashrc
     echo "alias zgs='$HOME/0g-storage-node/run/zgs.sh'" >> ~/.bashrc
-    echo 'export PATH=$HOME/0g-storage-node/run:$PATH' >> ~/.bashrc
+    export PATH=$HOME/0g-storage-node/run:$PATH
+    chmod +x $HOME/0g-storage-node/run/zgs.sh
     source ~/.bashrc
     hash -r
 }
 
 # Function to start the node
 start_node() {
-    echo "Starting 0G Storage Node..."
-    zgs start
-    echo "Node started."
+    if pgrep -x "zgs_node" > /dev/null; then
+        echo "0G Storage Node is already running!"
+    else
+        echo "Starting 0G Storage Node..."
+        bash $HOME/0g-storage-node/run/zgs.sh start
+        echo "Node started."
+    fi
 }
 
 # Function to stop the node
 stop_node() {
     echo "Stopping 0G Storage Node..."
-    zgs stop
+    bash $HOME/0g-storage-node/run/zgs.sh stop
     echo "Node stopped."
-}
-
-# Function to check the node status
-check_status() {
-    echo "Checking 0G Storage Node status..."
-    zgs info
 }
 
 # Function to check logs
 check_log() {
     echo "Checking 0G Storage Node log..."
-    zgslog
+    tail -f $HOME/0g-storage-node/run/log/zgs.log.$(date +%F)
 }
 
 # Function to uninstall the node
@@ -101,19 +107,13 @@ uninstall_node() {
     echo "0G Storage Node successfully uninstalled."
 }
 
-# Main menu loop
-while true; do
-    show_menu
-    read -p "Please enter your choice: " choice
-    case $choice in
-        1) install_node ;;
-        2) start_node ;;
-        3) stop_node ;;
-        4) check_status ;;
-        5) check_log ;;
-        6) uninstall_node ;;
-        7) echo "Exiting..."; exit 0 ;;
-        *) echo "Invalid option. Please try again." ;;
-    esac
-    read -p "Press Enter to continue..." </dev/tty
+check_status() {
+    bash $HOME/0g-storage-node/run/zgs.sh info
+}
+
+# Run menu
+while true; do show_menu; read -p "Please enter your choice: " choice; case $choice in
+    1) install_node ;; 2) start_node ;; 3) stop_node ;; 4) check_status ;;
+    5) check_log ;; 6) uninstall_node ;; 7) echo "Exiting..."; exit 0 ;;
+    *) echo "Invalid option. Please try again." ;; esac; read -p "Press Enter to continue..." </dev/tty
 done
