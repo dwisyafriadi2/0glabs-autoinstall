@@ -6,7 +6,7 @@
 
 ## How To Run
 1. ```git clone https://github.com/dwisyafriadi2/0glabs-autoinstall-storage.git```
-2. ```cd og-ai-storagenode; chmod +x autoinstall.sh```
+2. ```cd 0glabs-autoinstall-storage; chmod +x autoinstall.sh```
 3. ```./autoinstall.sh```
 
 ## Buy Faucet on here
