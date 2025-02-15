@@ -24,6 +24,8 @@ install_node() {
     
     latest_tag=$(git ls-remote --tags https://github.com/0glabs/0g-storage-node.git | awk -F/ '{print $3}' | tail -n 1)
     git clone -b "$latest_tag" https://github.com/0glabs/0g-storage-node.git || { echo "Failed to clone repository"; exit 1; }
+    git clone https://github.com/0glabs/0g-storage-contracts.git || { echo "Failed to clone contracts repository"; exit 1; }
+    
     cd 0g-storage-node || { echo "Directory not found"; exit 1; }
     cargo build --release || { echo "Cargo build failed"; exit 1; }
     
