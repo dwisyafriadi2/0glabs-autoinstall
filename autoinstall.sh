@@ -49,7 +49,8 @@ install_node() {
     sed -i 's|log_contract_address = ""|log_contract_address = "0xbD2C3F0E65eDF5582141C35969d66e34629cC768"|' config.toml
     sed -i 's|mine_contract_address = ""|mine_contract_address = "0x6815F41019255e00D6F34aAB8397a6Af5b6D806f"|' config.toml
     sed -i 's|log_sync_start_block_number = 0|log_sync_start_block_number = 940000|' config.toml
-    sed -i 's|log_file_path = ""|log_file_path = "$HOME/0g-storage-node/logs/zgs_node.log"|' config.toml
+    sed -i 's|# log_config_file = "log_config"|log_config_file = "$HOME/0g-storage-node/log_config"|' config.toml
+    sed -i 's|# log_directory = "log"|log_directory = "$HOME/0g-storage-node/logs"|' config.toml
     
     read -p "Enter your miner private key (64 characters, no '0x' prefix): " miner_key
     sed -i "s|miner_key = \"\"|miner_key = \"$miner_key\"|" config.toml
