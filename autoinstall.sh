@@ -19,7 +19,7 @@ show_menu() {
 # Function to install the 0G Storage Node
 install_node() {
     echo "Installing 0G Storage Node..."
-    sudo apt-get update && sudo apt-get install -y clang cmake build-essential pkg-config libssl-dev curl git
+    sudo apt-get update && sudo apt-get install -y clang cmake build-essential pkg-config libssl-dev curl git jq
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
     source $HOME/.cargo/env
     
@@ -29,10 +29,9 @@ install_node() {
     git clone https://github.com/0glabs/0g-storage-contracts.git || { echo "Failed to clone contracts repository"; exit 1; }
     
     cd 0g-storage-node || { echo "Directory not found"; exit 1; }
-    mkdir -p logs
+    mkdir -p run/log
     cargo build --release || { echo "Cargo build failed"; exit 1; }
     
-    mkdir -p run
     cd run || exit 1
     
     # Download the log_config file
@@ -49,8 +48,12 @@ install_node() {
     sed -i 's|log_contract_address = ""|log_contract_address = "0xbD2C3F0E65eDF5582141C35969d66e34629cC768"|' config.toml
     sed -i 's|mine_contract_address = ""|mine_contract_address = "0x6815F41019255e00D6F34aAB8397a6Af5b6D806f"|' config.toml
     sed -i 's|log_sync_start_block_number = 0|log_sync_start_block_number = 940000|' config.toml
-    sed -i 's|# log_config_file = "log_config"|log_config_file = "$HOME/0g-storage-node/log_config"|' config.toml
-    sed -i 's|# log_directory = "log"|log_directory = "$HOME/0g-storage-node/logs"|' config.toml
+    sed -i 's|# log_config_file = "log_config"|log_config_file = "'$HOME'/0g-storage-node/run/log_config"|' config.toml
+    sed -i 's|# log_directory = "log"|log_directory = "'$HOME'/0g-storage-node/run/log"|' config.toml
+    
+    read -p "Enter your miner private key (64 characters, no '0x' prefix): " miner_key
+echo "ZGS_NODE__MINER_KEY=$miner_key" > $HOME/0g-storage-node/run/.env
+    echo 'ZGS_NODE__BLOCKCHAIN_RPC_ENDPOINT=https://evmrpc-testnet.0g.ai' >> $HOME/0g-storage-node/run/.env
     
     read -p "Enter your miner private key (64 characters, no '0x' prefix): " miner_key
     sed -i "s|miner_key = \"\"|miner_key = \"$miner_key\"|" config.toml
@@ -63,11 +66,12 @@ After=network.target
 [Service]
 User=$USER
 WorkingDirectory=$HOME/0g-storage-node/run
-ExecStart=$HOME/0g-storage-node/target/release/zgs_node --config $HOME/0g-storage-node/run/config.toml --log-config-file $HOME/0g-storage-node/log_config
+ExecStart=$HOME/0g-storage-node/run/zgs.sh start
+ExecStop=$HOME/0g-storage-node/run/zgs.sh stop
 Restart=on-failure
 RestartSec=10
-StandardOutput=append:$HOME/0g-storage-node/logs/zgs_node.log
-StandardError=append:$HOME/0g-storage-node/logs/zgs_node.log
+StandardOutput=append:$HOME/0g-storage-node/run/log/zgs.log.$(date +%F)
+StandardError=append:$HOME/0g-storage-node/run/log/zgs.log.$(date +%F)
 LimitNOFILE=65535
 
 [Install]
