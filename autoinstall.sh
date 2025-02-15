@@ -22,17 +22,23 @@ install_node() {
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
     source $HOME/.cargo/env
     
-    cd $HOME;
+    cd $HOME
     latest_tag=$(curl -s https://api.github.com/repos/0glabs/0g-storage-node/releases/latest | grep 'tag_name' | cut -d '"' -f 4)
     git clone -b "$latest_tag" https://github.com/0glabs/0g-storage-node.git || { echo "Failed to clone repository"; exit 1; }
     git clone https://github.com/0glabs/0g-storage-contracts.git || { echo "Failed to clone contracts repository"; exit 1; }
     
     cd 0g-storage-node || { echo "Directory not found"; exit 1; }
+    mkdir -p logs
     cargo build --release || { echo "Cargo build failed"; exit 1; }
     
     mkdir -p run
     cd run || exit 1
     
+    # Download the log_config file
+    if [ ! -f "log_config" ]; then
+        wget https://raw.githubusercontent.com/0glabs/0g-storage-node/main/log_config -O log_config
+    fi
+
     if [ ! -f "config-testnet-turbo.toml" ]; then
         wget https://docs.0g.ai/config-testnet-turbo.toml -O config-testnet-turbo.toml
     fi
@@ -42,6 +48,7 @@ install_node() {
     sed -i 's|log_contract_address = ""|log_contract_address = "0xbD2C3F0E65eDF5582141C35969d66e34629cC768"|' config.toml
     sed -i 's|mine_contract_address = ""|mine_contract_address = "0x6815F41019255e00D6F34aAB8397a6Af5b6D806f"|' config.toml
     sed -i 's|log_sync_start_block_number = 0|log_sync_start_block_number = 940000|' config.toml
+    sed -i 's|log_file_path = ""|log_file_path = "$HOME/0g-storage-node/logs/zgs_node.log"|' config.toml
     
     read -p "Enter your miner private key (64 characters, no '0x' prefix): " miner_key
     sed -i "s|miner_key = \"\"|miner_key = \"$miner_key\"|" config.toml
@@ -53,10 +60,12 @@ After=network.target
 
 [Service]
 User=$USER
-WorkingDirectory=$HOME/0g-storage-node/target/release
-ExecStart=$HOME/0g-storage-node/target/release/zgs_node --config $HOME/0g-storage-node/run/config.toml
+WorkingDirectory=$HOME/0g-storage-node/run
+ExecStart=$HOME/0g-storage-node/target/release/zgs_node --config $HOME/0g-storage-node/run/config.toml --log-config-file $HOME/0g-storage-node/log_config
 Restart=on-failure
 RestartSec=10
+StandardOutput=append:$HOME/0g-storage-node/logs/zgs_node.log
+StandardError=append:$HOME/0g-storage-node/logs/zgs_node.log
 LimitNOFILE=65535
 
 [Install]
