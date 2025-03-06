@@ -6,13 +6,16 @@
 
 ## How To Run
 1. Clone Script
-```git clone https://github.com/dwisyafriadi2/0glabs-autoinstall-storage.git
+```
+git clone https://github.com/dwisyafriadi2/0glabs-autoinstall-storage.git
 ```
 2. Input Directory
-```cd 0glabs-autoinstall-storage; chmod +x autoinstall.sh
+```
+cd 0glabs-autoinstall-storage; chmod +x autoinstall.sh
 ```
 3.Run auto install
-```./autoinstall.sh
+```
+./autoinstall.sh
 ```
 
 ## Buy Faucet on here
