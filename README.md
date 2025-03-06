@@ -1,13 +1,19 @@
-﻿# 0G Ai Storage Node
+﻿﻿# 0G Ai Storage Node
 ## Features
 
 - Auto Install Node
 
 
 ## How To Run
-1. ```git clone https://github.com/dwisyafriadi2/0glabs-autoinstall-storage.git```
-2. ```cd 0glabs-autoinstall-storage; chmod +x autoinstall.sh```
-3. ```./autoinstall.sh```
+1. Clone Script
+```git clone https://github.com/dwisyafriadi2/0glabs-autoinstall-storage.git
+```
+2. Input Directory
+```cd 0glabs-autoinstall-storage; chmod +x autoinstall.sh
+```
+3.Run auto install
+```./autoinstall.sh
+```
 
 ## Buy Faucet on here
 
