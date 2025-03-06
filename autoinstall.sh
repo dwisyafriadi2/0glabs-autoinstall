@@ -50,19 +50,16 @@ install_node() {
     sed -i 's|blockchain_rpc_endpoint = ""|blockchain_rpc_endpoint = "https://evmrpc-testnet.0g.ai"|' config.toml
     sed -i 's|log_sync_start_block_number = 0|log_sync_start_block_number = 940000|' config.toml
     
-    # Read user input
-    read -p "Enter your miner private key (64 characters, no '0x' prefix): " miner_key
-    read -p "Enter blockchain RPC endpoint (default: https://evmrpc-testnet.0g.ai): " blockchain_rpc_endpoint
-    blockchain_rpc_endpoint=${blockchain_rpc_endpoint:-https://evmrpc-testnet.0g.ai}
-
-    # Create .env file
+    # Ganti bagian input kunci privat dengan kode baru
+    printf '\033[34mEnter your private key: \033[0m' && read -s PRIVATE_KEY
+    echo
+    sed -i 's|^\s*#\?\s*miner_key\s*=.*|miner_key = "'"$PRIVATE_KEY"'"|' $HOME/0g-storage-node/run/config-testnet-turbo.toml && echo -e "\033[32mPrivate key has been successfully added to the config file.\033[0m"
+    
+    # Create .env file dengan default blockchain RPC endpoint
     cat <<EOF > $HOME/0g-storage-node/run/.env
-ZGS_NODE__MINER_KEY=$miner_key
-ZGS_NODE__BLOCKCHAIN_RPC_ENDPOINT=$blockchain_rpc_endpoint
+ZGS_NODE__MINER_KEY=$PRIVATE_KEY
+ZGS_NODE__BLOCKCHAIN_RPC_ENDPOINT=https://evmrpc-testnet.0g.ai
 EOF
-
-    # Update config.toml
-    sed -i "s|miner_key = \"\"|miner_key = \"$miner_key\"|" config.toml
 
     # Add aliases
     echo "alias zgs-logs='tail -f \$HOME/0g-storage-node/run/log/zgs.log.\$(date +%F)'" >> ~/.bashrc
@@ -71,23 +68,40 @@ EOF
     chmod +x $HOME/0g-storage-node/run/zgs.sh
     source ~/.bashrc
     hash -r
+
+    # Setup systemd service for start and stop
+    echo "Setting up systemd service for ZGS Node..."
+    sudo tee /etc/systemd/system/zgs.service > /dev/null <<EOF
+[Unit]
+Description=ZGS Node
+After=network.target
+
+[Service]
+User=$USER
+WorkingDirectory=$HOME/0g-storage-node/run
+ExecStart=$HOME/0g-storage-node/target/release/zgs_node --config $HOME/0g-storage-node/run/config-testnet-turbo.toml
+Restart=on-failure
+RestartSec=10
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    sudo systemctl daemon-reload
 }
 
-# Function to start the node
+# Function to start the node using systemd
 start_node() {
-    if pgrep -x "zgs_node" > /dev/null; then
-        echo "0G Storage Node is already running!"
-    else
-        echo "Starting 0G Storage Node..."
-        bash $HOME/0g-storage-node/run/zgs.sh start
-        echo "Node started."
-    fi
+    echo "Starting 0G Storage Node using systemd..."
+    sudo systemctl start zgs
+    sudo systemctl status zgs --no-pager
 }
 
-# Function to stop the node
+# Function to stop the node using systemd
 stop_node() {
-    echo "Stopping 0G Storage Node..."
-    bash $HOME/0g-storage-node/run/zgs.sh stop
+    echo "Stopping 0G Storage Node using systemd..."
+    sudo systemctl stop zgs
     echo "Node stopped."
 }
 
@@ -102,6 +116,8 @@ uninstall_node() {
     echo "Uninstalling 0G Storage Node..."
     cp ~/.bashrc.bak ~/.bashrc
     rm -rf $HOME/0g-storage-node $HOME/0g-storage-contracts
+    sudo rm /etc/systemd/system/zgs.service
+    sudo systemctl daemon-reload
     source ~/.bashrc
     hash -r
     echo "0G Storage Node successfully uninstalled."
@@ -109,12 +125,22 @@ uninstall_node() {
 
 check_status() {
     echo "Checking Status 0G Storage Node..."
-    bash $HOME/0g-storage-node/run/zgs.sh info
+    sudo systemctl status zgs --no-pager
 }
 
 # Run menu
-while true; do show_menu; read -p "Please enter your choice: " choice; case $choice in
-    1) install_node ;; 2) start_node ;; 3) stop_node ;; 4) check_status ;;
-    5) check_log ;; 6) uninstall_node ;; 7) echo "Exiting..."; exit 0 ;;
-    *) echo "Invalid option. Please try again." ;; esac; read -p "Press Enter to continue..." </dev/tty
+while true; do 
+    show_menu
+    read -p "Please enter your choice: " choice
+    case $choice in
+        1) install_node ;;
+        2) start_node ;;
+        3) stop_node ;;
+        4) check_status ;;
+        5) check_log ;;
+        6) uninstall_node ;;
+        7) echo "Exiting..."; exit 0 ;;
+        *) echo "Invalid option. Please try again." ;;
+    esac
+    read -p "Press Enter to continue..." </dev/tty
 done
