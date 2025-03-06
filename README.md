@@ -19,6 +19,7 @@ cd 0glabs-autoinstall-storage; chmod +x autoinstall.sh
 ```
 
 ## Buy Faucet on here
+[Buy Now](https://t.me/ecerankriptobot)
 
 
 ## Join on telegram channel
