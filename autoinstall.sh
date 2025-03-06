@@ -14,6 +14,7 @@ show_menu() {
     echo "5. Check Logs"
     echo "6. Uninstall 0G Storage Node"
     echo "7. Exit"
+    echo "8. Update RPC Endpoint (https://evmrpc-testnet.0g.ai)"
     echo "=============================="
 }
 
@@ -123,9 +124,39 @@ uninstall_node() {
     echo "0G Storage Node successfully uninstalled."
 }
 
+# Function to check status
 check_status() {
     echo "Checking Status 0G Storage Node..."
     sudo systemctl status zgs --no-pager
+}
+
+# Function to update RPC Endpoint
+update_rpc() {
+    echo "=== Updating RPC Endpoint to https://evmrpc-testnet.0g.ai ==="
+    CONFIG_FILE="$HOME/0g-storage-node/run/config-testnet-turbo.toml"
+    ENV_FILE="$HOME/0g-storage-node/run/.env"
+
+    # Update config-testnet-turbo.toml
+    if [ -f "$CONFIG_FILE" ]; then
+        sed -i 's|^blockchain_rpc_endpoint = ".*"|blockchain_rpc_endpoint = "https://evmrpc-testnet.0g.ai"|' "$CONFIG_FILE"
+        echo "Updated $CONFIG_FILE"
+    else
+        echo "File $CONFIG_FILE not found, skipping..."
+    fi
+
+    # Update .env
+    if [ -f "$ENV_FILE" ]; then
+        sed -i 's|^ZGS_NODE__BLOCKCHAIN_RPC_ENDPOINT=.*|ZGS_NODE__BLOCKCHAIN_RPC_ENDPOINT=https://evmrpc-testnet.0g.ai|' "$ENV_FILE"
+        echo "Updated $ENV_FILE"
+    else
+        echo "File $ENV_FILE not found, skipping..."
+    fi
+
+    # Restart service
+    echo "Restarting ZGS Node..."
+    sudo systemctl restart zgs
+    sudo systemctl status zgs --no-pager
+    echo "=== RPC Endpoint update completed ==="
 }
 
 # Run menu
@@ -140,6 +171,7 @@ while true; do
         5) check_log ;;
         6) uninstall_node ;;
         7) echo "Exiting..."; exit 0 ;;
+        8) update_rpc ;;
         *) echo "Invalid option. Please try again." ;;
     esac
     read -p "Press Enter to continue..." </dev/tty
