@@ -1,78 +1,132 @@
 #!/bin/bash
+#
+# Zero Gravity (0G) Storage Node Installation & Management
+# Script ini mencakup:
+# 1. Instalasi dependencies (clang, cmake, build-essential, dll.)
+# 2. Instalasi Go 1.22.0
+# 3. Instalasi Rust
+# 4. Clone dan build 0g-storage-node (versi v0.8.4)
+# 5. Konfigurasi (miner_key, config-testnet-turbo.toml)
+# 6. Setup systemd service (zgs.service)
+# 7. Start/Stop Node
+# 8. Download & Extract Snapshot (opsional)
+# 9. Uninstall Node
+#
+# Sumber referensi:
+# - https://j-node.net/testnet/zero-gravity-0g/0g-storage-node/installation
+# - https://j-node.net/testnet/zero-gravity-0g/0g-storage-node/snapshot
+# - https://github.com/0glabs/0g-storage-node
+# - https://josephtran.co
 
-# Function to display the menu
-show_menu() {
-    # Display logo
-    curl -s https://raw.githubusercontent.com/dwisyafriadi2/logo/main/logo.sh | bash
+# -- Konfigurasi umum
+REPO_URL="https://github.com/0glabs/0g-storage-node.git"
+REPO_BRANCH="v0.8.4"
+CONFIG_URL="https://josephtran.co/config-testnet-turbo.toml"
+SNAPSHOT_URL="https://josephtran.co/storage_0gchain_snapshot.lz4"
+SNAPSHOT_FILE="storage_0gchain_snapshot.lz4"
+NODE_DIR="$HOME/0g-storage-node"
+RUN_DIR="$NODE_DIR/run"
+CONFIG_FILE="$RUN_DIR/config-testnet-turbo.toml"
+SERVICE_FILE="/etc/systemd/system/zgs.service"
+
+# -- Banner / Logo
+show_banner() {
+    # Logo 0G (opsional, dapat diganti atau dihapus)
+    # Anda bisa gunakan logo bawaan atau kustom:
+    # curl -s https://raw.githubusercontent.com/dwisyafriadi2/logo/main/logo.sh | bash
     echo "=============================="
-    echo " 0G Storage Node Management Menu "
-    echo "=============================="
-    echo "1. Install 0G Storage Node"
-    echo "2. Start Node"
-    echo "3. Stop Node"
-    echo "4. Check Node Status"
-    echo "5. Check Logs"
-    echo "6. Uninstall 0G Storage Node"
-    echo "7. Exit"
-    echo "8. Update RPC Endpoint (https://evmrpc-testnet.0g.ai)"
+    echo "       0G Storage Node"
     echo "=============================="
 }
 
-# Function to install the 0G Storage Node
-install_node() {
-    set -e  # Stop script on first error
-    cp ~/.bashrc ~/.bashrc.bak
-    echo "Installing 0G Storage Node..."
-    sudo apt-get update && sudo apt-get install -y clang cmake build-essential pkg-config libssl-dev curl git jq
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-    source $HOME/.cargo/env
-    
-    cd $HOME
-    latest_tag=$(curl -s https://api.github.com/repos/0glabs/0g-storage-node/releases/latest | grep 'tag_name' | cut -d '"' -f 4)
-    git clone -b "$latest_tag" https://github.com/0glabs/0g-storage-node.git || { echo "Failed to clone repository"; exit 1; }
-    git clone https://github.com/0glabs/0g-storage-contracts.git || { echo "Failed to clone contracts repository"; exit 1; }
-    
-    cd 0g-storage-node || { echo "Directory not found"; exit 1; }
-    mkdir -p run/log
-    cargo build --release || { echo "Cargo build failed"; exit 1; }
-    
-    cd run || exit 1
-    
-    # Download the log_config file
-    if [ ! -f "log_config" ]; then
-        wget https://raw.githubusercontent.com/0glabs/0g-storage-node/main/log_config -O log_config
-    fi
+# -- Menu
+show_menu() {
+    show_banner
+    echo " 1. Install Dependencies"
+    echo " 2. Install & Setup 0G Storage Node (From Source)"
+    echo " 3. Start Node"
+    echo " 4. Stop Node"
+    echo " 5. Check Node Status"
+    echo " 6. Check Logs"
+    echo " 7. Download & Extract Snapshot"
+    echo " 8. Uninstall Node"
+    echo " 9. Exit"
+    echo "=============================="
+}
 
-    if [ ! -f "config-testnet-turbo.toml" ]; then
-        wget https://docs.0g.ai/config-testnet-turbo.toml -O config-testnet-turbo.toml
+# -- 1. Install Dependencies
+install_dependencies() {
+    echo ">>> Installing Dependencies..."
+    sudo apt-get update
+    sudo apt-get install -y clang cmake build-essential openssl pkg-config libssl-dev curl git jq wget lz4 aria2 pv
+    echo ">>> Dependencies installation completed."
+}
+
+# -- Install Go 1.22.0
+install_go() {
+    echo ">>> Installing Go 1.22.0..."
+    cd $HOME
+    ver="1.22.0"
+    wget "https://golang.org/dl/go$ver.linux-amd64.tar.gz"
+    sudo rm -rf /usr/local/go
+    sudo tar -C /usr/local -xzf "go$ver.linux-amd64.tar.gz"
+    rm "go$ver.linux-amd64.tar.gz"
+    # Tambahkan PATH go ke ~/.bash_profile
+    if ! grep -q '/usr/local/go/bin' "$HOME/.bash_profile"; then
+        echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> "$HOME/.bash_profile"
     fi
-    
-    cp config-testnet-turbo.toml config.toml
-    sed -i 's|blockchain_rpc_endpoint = ""|blockchain_rpc_endpoint = "https://evmrpc-testnet.0g.ai"|' config.toml
-    sed -i 's|log_sync_start_block_number = 0|log_sync_start_block_number = 940000|' config.toml
-    
-    # Ganti bagian input kunci privat dengan kode baru
+    source "$HOME/.bash_profile"
+    go version
+    echo ">>> Go installation completed."
+}
+
+# -- Install Rust
+install_rust() {
+    echo ">>> Installing Rust..."
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    source "$HOME/.cargo/env"
+    echo ">>> Rust installation completed."
+}
+
+# -- 2. Install & Setup 0G Storage Node
+install_node() {
+    set -e
+    # Backup .bashrc
+    cp ~/.bashrc ~/.bashrc.bak || true
+
+    echo ">>> Installing 0G Storage Node..."
+
+    # 2.1 Install dependencies, Go, Rust
+    install_dependencies
+    install_go
+    install_rust
+
+    # 2.2 Remove old folder & clone fresh
+    cd $HOME
+    rm -rf $NODE_DIR
+    git clone "$REPO_URL" "$NODE_DIR"
+    cd $NODE_DIR
+    git checkout "$REPO_BRANCH"
+    git submodule update --init
+
+    # 2.3 Build
+    mkdir -p $RUN_DIR/log
+    cargo build --release
+
+    # 2.4 Download config-testnet-turbo.toml
+    cd $RUN_DIR
+    echo ">>> Downloading config file..."
+    wget -O "$CONFIG_FILE" "$CONFIG_URL"
+
+    # 2.5 Minta input private key
     printf '\033[34mEnter your private key: \033[0m' && read -s PRIVATE_KEY
     echo
-    sed -i 's|^\s*#\?\s*miner_key\s*=.*|miner_key = "'"$PRIVATE_KEY"'"|' $HOME/0g-storage-node/run/config-testnet-turbo.toml && echo -e "\033[32mPrivate key has been successfully added to the config file.\033[0m"
-    
-    # Create .env file dengan default blockchain RPC endpoint
-    cat <<EOF > $HOME/0g-storage-node/run/.env
-ZGS_NODE__MINER_KEY=$PRIVATE_KEY
-ZGS_NODE__BLOCKCHAIN_RPC_ENDPOINT=https://evmrpc-testnet.0g.ai
-EOF
+    sed -i 's|^\s*#\?\s*miner_key\s*=.*|miner_key = "'"$PRIVATE_KEY"'"|' "$CONFIG_FILE" && \
+    echo -e "\033[32mPrivate key has been successfully added to the config file.\033[0m"
 
-    # Add aliases
-    echo "alias zgs-logs='tail -f \$HOME/0g-storage-node/run/log/zgs.log.\$(date +%F)'" >> ~/.bashrc
-    echo "alias zgs='$HOME/0g-storage-node/run/zgs.sh'" >> ~/.bashrc
-    export PATH=$HOME/0g-storage-node/run:$PATH
-    chmod +x $HOME/0g-storage-node/run/zgs.sh
-    source ~/.bashrc
-    hash -r
-
-    # Setup systemd service for start and stop
-    echo "Setting up systemd service for ZGS Node..."
-    sudo tee /etc/systemd/system/zgs.service > /dev/null <<EOF
+    # 2.6 Setup systemd service
+    echo ">>> Setting up systemd service..."
+    sudo tee "$SERVICE_FILE" > /dev/null <<EOF
 [Unit]
 Description=ZGS Node
 After=network.target
@@ -90,88 +144,100 @@ WantedBy=multi-user.target
 EOF
 
     sudo systemctl daemon-reload
+    sudo systemctl enable zgs
+
+    # 2.7 Selesai
+    echo ">>> 0G Storage Node installation completed."
+    echo ">>> Use the menu to start the node."
 }
 
-# Function to start the node using systemd
+# -- 3. Start Node
 start_node() {
-    echo "Starting 0G Storage Node using systemd..."
+    echo ">>> Starting 0G Storage Node..."
     sudo systemctl start zgs
     sudo systemctl status zgs --no-pager
 }
 
-# Function to stop the node using systemd
+# -- 4. Stop Node
 stop_node() {
-    echo "Stopping 0G Storage Node using systemd..."
+    echo ">>> Stopping 0G Storage Node..."
     sudo systemctl stop zgs
-    echo "Node stopped."
 }
 
-# Function to check logs
-check_log() {
-    echo "Checking 0G Storage Node log..."
-    tail -f $HOME/0g-storage-node/run/log/zgs.log.$(date +%F)
-}
-
-# Function to uninstall the node
-uninstall_node() {
-    echo "Uninstalling 0G Storage Node..."
-    cp ~/.bashrc.bak ~/.bashrc
-    rm -rf $HOME/0g-storage-node $HOME/0g-storage-contracts
-    sudo rm /etc/systemd/system/zgs.service
-    sudo systemctl daemon-reload
-    source ~/.bashrc
-    hash -r
-    echo "0G Storage Node successfully uninstalled."
-}
-
-# Function to check status
+# -- 5. Check Node Status
 check_status() {
-    echo "Checking Status 0G Storage Node..."
+    echo ">>> Checking Node Status..."
     sudo systemctl status zgs --no-pager
 }
 
-# Function to update RPC Endpoint
-update_rpc() {
-    echo "=== Updating RPC Endpoint to https://evmrpc-testnet.0g.ai ==="
-    CONFIG_FILE="$HOME/0g-storage-node/run/config-testnet-turbo.toml"
-    ENV_FILE="$HOME/0g-storage-node/run/.env"
-
-    # Update config-testnet-turbo.toml
-    if [ -f "$CONFIG_FILE" ]; then
-        sed -i 's|^blockchain_rpc_endpoint = ".*"|blockchain_rpc_endpoint = "https://evmrpc-testnet.0g.ai"|' "$CONFIG_FILE"
-        echo "Updated $CONFIG_FILE"
+# -- 6. Check Logs
+check_logs() {
+    LOGFILE="$RUN_DIR/log/zgs.log.$(TZ=UTC date +%Y-%m-%d)"
+    echo ">>> Checking logs: $LOGFILE"
+    if [ -f "$LOGFILE" ]; then
+        tail -f "$LOGFILE"
     else
-        echo "File $CONFIG_FILE not found, skipping..."
+        echo "Log file not found: $LOGFILE"
     fi
+}
 
-    # Update .env
-    if [ -f "$ENV_FILE" ]; then
-        sed -i 's|^ZGS_NODE__BLOCKCHAIN_RPC_ENDPOINT=.*|ZGS_NODE__BLOCKCHAIN_RPC_ENDPOINT=https://evmrpc-testnet.0g.ai|' "$ENV_FILE"
-        echo "Updated $ENV_FILE"
-    else
-        echo "File $ENV_FILE not found, skipping..."
-    fi
+# -- 7. Download & Extract Snapshot
+download_snapshot() {
+    echo ">>> Stopping node before downloading snapshot..."
+    sudo systemctl stop zgs
 
-    # Restart service
-    echo "Restarting ZGS Node..."
+    echo ">>> Downloading snapshot from: $SNAPSHOT_URL"
+    cd $HOME
+    rm -f $SNAPSHOT_FILE
+    aria2c -x 16 -s 16 -k 1M "$SNAPSHOT_URL"
+
+    echo ">>> Removing old DB..."
+    rm -rf "$RUN_DIR/db"
+
+    echo ">>> Extracting snapshot..."
+    lz4 -c -d "$SNAPSHOT_FILE" | pv | tar -x -C "$RUN_DIR"
+
+    echo ">>> Restarting node..."
     sudo systemctl restart zgs
-    sudo systemctl status zgs --no-pager
-    echo "=== RPC Endpoint update completed ==="
+    echo ">>> Done. Check logs to see sync progress."
 }
 
-# Run menu
-while true; do 
+# -- 8. Uninstall Node
+uninstall_node() {
+    echo ">>> Uninstalling 0G Storage Node..."
+    sudo systemctl stop zgs || true
+    sudo systemctl disable zgs || true
+    sudo rm -f "$SERVICE_FILE"
+    sudo systemctl daemon-reload
+
+    rm -rf "$NODE_DIR"
+    echo ">>> 0G Storage Node successfully uninstalled."
+    echo ">>> Restoring .bashrc backup if exists..."
+    if [ -f ~/.bashrc.bak ]; then
+        cp ~/.bashrc.bak ~/.bashrc
+    fi
+}
+
+# -- 9. Exit
+exit_script() {
+    echo "Exiting..."
+    exit 0
+}
+
+# -- Main Menu Loop
+while true; do
     show_menu
-    read -p "Please enter your choice: " choice
+    read -p "Please enter your choice [1-9]: " choice
     case $choice in
-        1) install_node ;;
-        2) start_node ;;
-        3) stop_node ;;
-        4) check_status ;;
-        5) check_log ;;
-        6) uninstall_node ;;
-        7) echo "Exiting..."; exit 0 ;;
-        8) update_rpc ;;
+        1) install_dependencies ;;
+        2) install_node ;;
+        3) start_node ;;
+        4) stop_node ;;
+        5) check_status ;;
+        6) check_logs ;;
+        7) download_snapshot ;;
+        8) uninstall_node ;;
+        9) exit_script ;;
         *) echo "Invalid option. Please try again." ;;
     esac
     read -p "Press Enter to continue..." </dev/tty
