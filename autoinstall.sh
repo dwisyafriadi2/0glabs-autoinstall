@@ -33,7 +33,7 @@ SERVICE_FILE="/etc/systemd/system/zgs.service"
 show_banner() {
     # Logo 0G (opsional, dapat diganti atau dihapus)
     # Anda bisa gunakan logo bawaan atau kustom:
-    # curl -s https://raw.githubusercontent.com/dwisyafriadi2/logo/main/logo.sh | bash
+    curl -s https://raw.githubusercontent.com/dwisyafriadi2/logo/main/logo.sh | bash
     echo "=============================="
     echo "       0G Storage Node"
     echo "=============================="
