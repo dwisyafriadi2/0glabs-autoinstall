@@ -72,10 +72,10 @@ install_go() {
     sudo tar -C /usr/local -xzf "go$ver.linux-amd64.tar.gz"
     rm "go$ver.linux-amd64.tar.gz"
     # Tambahkan PATH go ke ~/.bash_profile
-    if ! grep -q '/usr/local/go/bin' "$HOME/.bash_profile"; then
-        echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> "$HOME/.bash_profile"
+    if ! grep -q '/usr/local/go/bin' "$HOME/.bashrc"; then
+        echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> "$HOME/.bashrc"
     fi
-    source "$HOME/.bash_profile"
+    source "$HOME/.bashrc"
     go version
     echo ">>> Go installation completed."
 }
