@@ -1,4 +1,4 @@
-﻿﻿# 0G Ai Storage Node
+﻿﻿## 0G Ai Storage Node
 ## Features
 
 - Auto Install Storage Node
