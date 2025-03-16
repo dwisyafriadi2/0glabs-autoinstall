@@ -135,7 +135,7 @@ uninstall_da_node() {
     sudo systemctl disable 0gda
     sudo rm /etc/systemd/system/0gda.service
     sudo systemctl daemon-reload
-    rm -rf $HOME/0g-da-node
+    sudo rm -rf $HOME/0g-da-node
     echo "0G DA Node successfully uninstalled."
 }
 
