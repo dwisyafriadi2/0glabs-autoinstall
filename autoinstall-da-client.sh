@@ -60,24 +60,65 @@ install_da_client() {
 
 configure_da_client() {
     echo "Configuring 0G DA Client..."
-    read -p "Enter your RPC URL: " rpc_url
+
+    # Prompt user for details
+    read -p "Enter your RPC URL (e.g., https://evmrpc-testnet.0g.ai): " rpc_url
     read -p "Enter your Ethereum private key: " eth_private_key
     read -p "Enter your DA Node IP: " da_node_ip
-    
+
     makefile_path="$HOME/0g-da-client/disperser/Makefile"
+
+    # Backup the existing Makefile
     if [ -f "$makefile_path" ]; then
-        sed -i "s|--chain.rpc http://YOUR_RPC|--chain.rpc $rpc_url|g" "$makefile_path"
-        sed -i "s|--chain.private-key YOUR_PRIVATE_KEY|--chain.private-key $eth_private_key|g" "$makefile_path"
-        sed -i "s|--encoder-socket YOUR_DA_NODE_IP:34000|--encoder-socket $da_node_ip:34000|g" "$makefile_path"
-        echo "0G DA Client configured successfully."
+        cp "$makefile_path" "$makefile_path.bak"
+        echo "Backup of Makefile created: Makefile.bak"
     else
-        echo "Error: Makefile not found!"
+        echo "Error: Makefile not found! Exiting."
+        return 1
     fi
+
+    # Update Makefile with user inputs
+    cat <<EOF > "$makefile_path"
+run_combined: build_combined
+	./bin/combined \\
+	--chain.rpc $rpc_url \\
+	--chain.private-key $eth_private_key \\
+	--chain.receipt-wait-rounds 180 \\
+	--chain.receipt-wait-interval 1s \\
+	--chain.gas-limit 2000000 \\
+	--combined-server.use-memory-db \\
+	--combined-server.storage.kv-db-path /runtime/ \\
+	--combined-server.storage.time-to-expire 2592000 \\
+	--disperser-server.grpc-port 51001 \\
+	--batcher.da-entrance-contract 0x857C0A28A8634614BB2C96039Cf4a20AFF709Aa9 \\
+	--batcher.da-signers-contract 0x0000000000000000000000000000000000001000 \\
+	--batcher.finalizer-interval 20s \\
+	--batcher.confirmer-num 3 \\
+	--batcher.max-num-retries-for-sign 3 \\
+	--batcher.finalized-block-count 50 \\
+	--batcher.batch-size-limit 500 \\
+	--batcher.encoding-interval 3s \\
+	--batcher.encoding-request-queue-size 1 \\
+	--batcher.pull-interval 10s \\
+	--batcher.signing-interval 3s \\
+	--batcher.signed-pull-interval 20s \\
+	--batcher.expiration-poll-interval 3600 \\
+	--encoder-socket $da_node_ip:34000 \\
+	--encoding-timeout 600s \\
+	--signing-timeout 600s \\
+	--chain-read-timeout 12s \\
+	--chain-write-timeout 13s \\
+	--combined-server.log.level-file trace \\
+	--combined-server.log.level-std trace \\
+	--combined-server.log.path ./../run/run.log
+EOF
+
+    echo "Makefile updated successfully!"
 
     # Create systemd service
     sudo tee /etc/systemd/system/0gdacli.service > /dev/null <<EOF
 [Unit]
-Description=0G-DA-ClI Node
+Description=0G DA Client
 After=network.target
 
 [Service]
@@ -97,6 +138,7 @@ EOF
     sudo systemctl enable 0gdacli
     echo "0G DA Client systemd service created and enabled."
 }
+
 
 start_da_client() {
     echo "Starting 0G DA Client..."
