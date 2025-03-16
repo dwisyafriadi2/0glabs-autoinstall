@@ -9,13 +9,18 @@
 ## How To Run
 1. Clone Script
 ```
-git clone https://github.com/dwisyafriadi2/0glabs-autoinstall-storage.git
+git clone https://github.com/dwisyafriadi2/0glabs-autoinstall.git
 ```
 2. Input Directory
 ```
 cd 0glabs-autoinstall-storage; chmod +x autoinstall*
 ```
 3.Run auto install DA NODE
+```
+./autoinstall-da-node.sh
+```
+
+4.Run auto install Storage NODE
 ```
 ./autoinstall.sh
 ```
