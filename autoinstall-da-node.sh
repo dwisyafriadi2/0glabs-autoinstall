@@ -99,6 +99,26 @@ miner_eth_private_key = "$miner_eth_key"
 enable_das = "true"
 EOF
 
+sudo tee /etc/systemd/system/0gda.service > /dev/null <<EOF
+[Unit]
+Description=0G-DA Node
+After=network.target
+
+[Service]
+User=root
+Environment="RUST_BACKTRACE=full"
+Environment="RUST_LOG=debug"
+WorkingDirectory=$HOME/0g-da-node
+ExecStart=$HOME/0g-da-node/target/release/server --config $HOME/0g-da-node/config.toml
+Restart=always
+RestartSec=10
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+
     echo "0G DA Node configured."
 }
 
