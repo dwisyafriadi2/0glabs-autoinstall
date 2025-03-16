@@ -2,7 +2,6 @@
 
 # Function to display the menu
 show_menu() {
-    curl -s https://raw.githubusercontent.com/dwisyafriadi2/logo/main/logo.sh | bash
     echo "=============================="
     echo " 0G DA Client Management Menu "
     echo "=============================="
@@ -73,6 +72,29 @@ configure_da_client() {
     else
         echo "Error: Makefile not found!"
     fi
+
+    # Create systemd service
+    sudo tee /etc/systemd/system/0gdacli.service > /dev/null <<EOF
+[Unit]
+Description=0G-DA-ClI Node
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/root/0g-da-client/disperser
+ExecStart=/usr/bin/make run_combined
+Restart=always
+RestartSec=10
+LimitNOFILE=65535
+Environment="PATH=/usr/local/go/bin:/usr/bin:/bin"
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    
+    sudo systemctl daemon-reload
+    sudo systemctl enable 0gdacli
+    echo "0G DA Client systemd service created and enabled."
 }
 
 start_da_client() {
