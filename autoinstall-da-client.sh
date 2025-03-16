@@ -80,8 +80,8 @@ Description=0G-DA-ClI Node
 After=network.target
 
 [Service]
-User=root
-WorkingDirectory=/root/0g-da-client/disperser
+User=$USER
+WorkingDirectory=$HOME/0g-da-client/disperser
 ExecStart=/usr/bin/make run_combined
 Restart=always
 RestartSec=10
