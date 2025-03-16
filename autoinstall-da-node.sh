@@ -118,7 +118,8 @@ LimitNOFILE=65535
 WantedBy=multi-user.target
 EOF
 
-
+    sudo systemctl daemon-reload && \
+    sudo systemctl start 0gda 
     echo "0G DA Node configured."
 }
 
