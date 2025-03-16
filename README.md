@@ -1,7 +1,9 @@
 ﻿﻿# 0G Ai Storage Node
 ## Features
 
-- Auto Install Node
+- Auto Install Storage Node
+- Auto Install DA Node
+- Auto Install DA Client
 
 
 ## How To Run
@@ -11,9 +13,9 @@ git clone https://github.com/dwisyafriadi2/0glabs-autoinstall-storage.git
 ```
 2. Input Directory
 ```
-cd 0glabs-autoinstall-storage; chmod +x autoinstall.sh
+cd 0glabs-autoinstall-storage; chmod +x autoinstall*
 ```
-3.Run auto install
+3.Run auto install DA NODE
 ```
 ./autoinstall.sh
 ```
